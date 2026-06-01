@@ -1,0 +1,12 @@
+# 窗口配置
+COLS = 20
+ROWS = 20
+CELL_SIZE = 28
+
+# 自动计算
+WINDOW_W = COLS * CELL_SIZE
+WINDOW_H = ROWS * CELL_SIZE + 60  # 底部预留信息栏
+
+# 颜色
+BG_COLOR = (15, 15, 30)
+GRID_COLOR = (25, 25, 50)
