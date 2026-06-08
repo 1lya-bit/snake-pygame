@@ -1,4 +1,5 @@
 import random
+import json
 import pygame
 from settings import *
 
@@ -9,7 +10,10 @@ class SnakeGame:
         self.screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
         pygame.display.set_caption("贪吃蛇 - Snake")
         self.clock = pygame.time.Clock()
+        self.font = pygame.font.SysFont("microsoftyahei", 20)
+        self.font_small = pygame.font.SysFont("microsoftyahei", 14)
         self.running = True
+        self.paused = False
         self.game_over_flag = False
         self.init_game()
 
@@ -21,6 +25,9 @@ class SnakeGame:
         self.food = self._place_food()
         self.score = 0
         self.speed = BASE_SPEED
+        self.high_score = self._load_high_score()
+        self.game_over_flag = False
+        self.paused = False
 
     def _place_food(self):
         occupied = set(self.snake)
@@ -28,13 +35,29 @@ class SnakeGame:
                 if (x, y) not in occupied]
         return random.choice(free) if free else None
 
+    def _load_high_score(self):
+        try:
+            with open(HIGH_SCORE_FILE, "r") as f:
+                return json.load(f).get("high_score", 0)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return 0
+
+    def _save_high_score(self):
+        with open(HIGH_SCORE_FILE, "w") as f:
+            json.dump({"high_score": self.high_score}, f)
+
     def set_direction(self, dx, dy):
         if (dx, dy) == (-self.direction[0], -self.direction[1]):
             return
         self.next_direction = (dx, dy)
 
-    def step(self):
+    def toggle_pause(self):
         if self.game_over_flag:
+            return
+        self.paused = not self.paused
+
+    def step(self):
+        if self.game_over_flag or self.paused:
             return
 
         self.direction = self.next_direction
@@ -64,9 +87,15 @@ class SnakeGame:
 
     def _game_over(self):
         self.game_over_flag = True
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self._save_high_score()
 
     def _win(self):
         self.game_over_flag = True
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self._save_high_score()
 
     def draw(self):
         self.screen.fill(BG_COLOR)
@@ -95,24 +124,47 @@ class SnakeGame:
         bar_y = ROWS * CELL_SIZE
         pygame.draw.rect(self.screen, (10, 10, 25),
                          (0, bar_y, WINDOW_W, WINDOW_H - bar_y))
-        font = pygame.font.SysFont("microsoftyahei", 20)
-        score_text = font.render(f"分数: {self.score}", True, (220, 220, 220))
+        score_text = self.font.render(f"分数: {self.score}", True, (220, 220, 220))
         self.screen.blit(score_text, (12, bar_y + 10))
+        high_text = self.font_small.render(f"最高分: {self.high_score}", True, (0, 210, 255))
+        self.screen.blit(high_text, (12, bar_y + 34))
 
         if self.game_over_flag:
+            overlay = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 140))
+            self.screen.blit(overlay, (0, 0))
             font_big = pygame.font.SysFont("microsoftyahei", 36, bold=True)
             msg = "你赢了!" if self.food is None else "游戏结束"
             go_text = font_big.render(msg, True, (255, 107, 107))
             go_rect = go_text.get_rect(
-                center=(WINDOW_W // 2, WINDOW_H // 2))
+                center=(WINDOW_W // 2, WINDOW_H // 2 - 30))
             self.screen.blit(go_text, go_rect)
+            restart_text = self.font.render("按 R 重新开始 | 按 Q 退出", True, (220, 220, 220))
+            restart_rect = restart_text.get_rect(
+                center=(WINDOW_W // 2, WINDOW_H // 2 + 25))
+            self.screen.blit(restart_text, restart_rect)
+
+        elif self.paused:
+            overlay = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 120))
+            self.screen.blit(overlay, (0, 0))
+            font_big = pygame.font.SysFont("microsoftyahei", 36, bold=True)
+            pause_text = font_big.render("已暂停", True, (220, 220, 220))
+            pause_rect = pause_text.get_rect(
+                center=(WINDOW_W // 2, WINDOW_H // 2 - 20))
+            self.screen.blit(pause_text, pause_rect)
+            tip_text = self.font_small.render("按 空格 继续", True, (180, 180, 180))
+            tip_rect = tip_text.get_rect(
+                center=(WINDOW_W // 2, WINDOW_H // 2 + 20))
+            self.screen.blit(tip_text, tip_rect)
 
         pygame.display.flip()
 
     def run(self):
         while self.running:
             self._handle_events()
-            self.step()
+            if not self.paused and not self.game_over_flag:
+                self.step()
             self.draw()
             self.clock.tick(1000 // self.speed)
 
@@ -120,12 +172,20 @@ class SnakeGame:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            if event.type == pygame.KEYDOWN and not self.game_over_flag:
-                if event.key in (pygame.K_UP, pygame.K_w):
-                    self.set_direction(0, -1)
-                elif event.key in (pygame.K_DOWN, pygame.K_s):
-                    self.set_direction(0, 1)
-                elif event.key in (pygame.K_LEFT, pygame.K_a):
-                    self.set_direction(-1, 0)
-                elif event.key in (pygame.K_RIGHT, pygame.K_d):
-                    self.set_direction(1, 0)
+            if event.type == pygame.KEYDOWN:
+                if self.game_over_flag:
+                    if event.key == pygame.K_r:
+                        self.init_game()
+                    elif event.key == pygame.K_q:
+                        self.running = False
+                elif event.key == pygame.K_SPACE:
+                    self.toggle_pause()
+                elif not self.paused:
+                    if event.key in (pygame.K_UP, pygame.K_w):
+                        self.set_direction(0, -1)
+                    elif event.key in (pygame.K_DOWN, pygame.K_s):
+                        self.set_direction(0, 1)
+                    elif event.key in (pygame.K_LEFT, pygame.K_a):
+                        self.set_direction(-1, 0)
+                    elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                        self.set_direction(1, 0)
