@@ -99,64 +99,106 @@ class SnakeGame:
 
     def draw(self):
         self.screen.fill(BG_COLOR)
+
         for x in range(COLS):
             for y in range(ROWS):
                 rect = pygame.Rect(
                     x * CELL_SIZE, y * CELL_SIZE,
                     CELL_SIZE, CELL_SIZE
                 )
-                pygame.draw.rect(self.screen, GRID_COLOR, rect, 1)
+                pygame.draw.rect(self.screen, GRID_COLOR, rect, GRID_WIDTH)
 
         if self.food:
             fx, fy = self.food
             cx = fx * CELL_SIZE + CELL_SIZE // 2
             cy = fy * CELL_SIZE + CELL_SIZE // 2
             r = CELL_SIZE // 2 - 2
-            pygame.draw.circle(self.screen, (255, 107, 107), (cx, cy), r)
+            for i in range(3, 0, -1):
+                alpha = 60 // i
+                color = (255, 80 + i * 20, 80 + i * 20)
+                pygame.draw.circle(self.screen, color, (cx, cy), r + i * 2)
+            pygame.draw.circle(self.screen, FOOD_COLOR, (cx, cy), r)
 
-        for sx, sy in self.snake:
+        for i, (sx, sy) in enumerate(self.snake):
             x = sx * CELL_SIZE + 1
             y = sy * CELL_SIZE + 1
             w = CELL_SIZE - 2
-            pygame.draw.rect(self.screen, (80, 220, 120),
-                             (x, y, w, w), border_radius=4)
+
+            if i == 0:
+                color = SNAKE_HEAD_COLOR
+            else:
+                t = i / max(len(self.snake) - 1, 1)
+                r_val = int(SNAKE_BODY_START[0] + t * (SNAKE_BODY_END[0] - SNAKE_BODY_START[0]))
+                g_val = int(SNAKE_BODY_START[1] + t * (SNAKE_BODY_END[1] - SNAKE_BODY_START[1]))
+                b_val = int(SNAKE_BODY_START[2] + t * (SNAKE_BODY_END[2] - SNAKE_BODY_START[2]))
+                color = (r_val, g_val, b_val)
+
+            radius = 6 if i == 0 else 4
+            pygame.draw.rect(self.screen, color, (x, y, w, w), border_radius=radius)
+
+            if i == 0:
+                eye_size = 3
+                eye_color = (255, 255, 255)
+                mid_x, mid_y = x + w // 2, y + w // 2
+                dx, dy = self.direction
+                if dx == 1:
+                    pygame.draw.rect(self.screen, eye_color, (mid_x + 3, mid_y - 5, eye_size, eye_size))
+                    pygame.draw.rect(self.screen, eye_color, (mid_x + 3, mid_y + 2, eye_size, eye_size))
+                elif dx == -1:
+                    pygame.draw.rect(self.screen, eye_color, (mid_x - 6, mid_y - 5, eye_size, eye_size))
+                    pygame.draw.rect(self.screen, eye_color, (mid_x - 6, mid_y + 2, eye_size, eye_size))
+                elif dy == -1:
+                    pygame.draw.rect(self.screen, eye_color, (mid_x - 5, mid_y - 6, eye_size, eye_size))
+                    pygame.draw.rect(self.screen, eye_color, (mid_x + 2, mid_y - 6, eye_size, eye_size))
+                elif dy == 1:
+                    pygame.draw.rect(self.screen, eye_color, (mid_x - 5, mid_y + 3, eye_size, eye_size))
+                    pygame.draw.rect(self.screen, eye_color, (mid_x + 2, mid_y + 3, eye_size, eye_size))
 
         bar_y = ROWS * CELL_SIZE
         pygame.draw.rect(self.screen, (10, 10, 25),
                          (0, bar_y, WINDOW_W, WINDOW_H - bar_y))
-        score_text = self.font.render(f"分数: {self.score}", True, (220, 220, 220))
+        score_text = self.font.render(f"分数: {self.score}", True, TEXT_COLOR)
         self.screen.blit(score_text, (12, bar_y + 10))
-        high_text = self.font_small.render(f"最高分: {self.high_score}", True, (0, 210, 255))
+        high_text = self.font_small.render(f"最高分: {self.high_score}", True, ACCENT_COLOR)
         self.screen.blit(high_text, (12, bar_y + 34))
+        speed_text = self.font_small.render(f"速度: {BASE_SPEED - self.speed + MIN_SPEED}", True, (150, 150, 150))
+        speed_rect = speed_text.get_rect(right=WINDOW_W - 12, centery=bar_y + 22)
+        self.screen.blit(speed_text, speed_rect)
 
         if self.game_over_flag:
             overlay = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 140))
             self.screen.blit(overlay, (0, 0))
-            font_big = pygame.font.SysFont("microsoftyahei", 36, bold=True)
-            msg = "你赢了!" if self.food is None else "游戏结束"
-            go_text = font_big.render(msg, True, (255, 107, 107))
-            go_rect = go_text.get_rect(
-                center=(WINDOW_W // 2, WINDOW_H // 2 - 30))
+            go_font = pygame.font.SysFont("microsoftyahei", 48, bold=True)
+            if self.food is None and len(self.snake) == COLS * ROWS:
+                msg = "你赢了!"
+                msg_color = (0, 255, 100)
+            else:
+                msg = "游戏结束"
+                msg_color = (255, 107, 107)
+            go_text = go_font.render(msg, True, msg_color)
+            go_rect = go_text.get_rect(center=(WINDOW_W // 2, WINDOW_H // 2 - 30))
             self.screen.blit(go_text, go_rect)
-            restart_text = self.font.render("按 R 重新开始 | 按 Q 退出", True, (220, 220, 220))
-            restart_rect = restart_text.get_rect(
-                center=(WINDOW_W // 2, WINDOW_H // 2 + 25))
+            restart_text = self.font.render("按 R 重新开始 | 按 Q 退出", True, TEXT_COLOR)
+            restart_rect = restart_text.get_rect(center=(WINDOW_W // 2, WINDOW_H // 2 + 25))
             self.screen.blit(restart_text, restart_rect)
 
         elif self.paused:
             overlay = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 120))
             self.screen.blit(overlay, (0, 0))
-            font_big = pygame.font.SysFont("microsoftyahei", 36, bold=True)
-            pause_text = font_big.render("已暂停", True, (220, 220, 220))
-            pause_rect = pause_text.get_rect(
-                center=(WINDOW_W // 2, WINDOW_H // 2 - 20))
+            pause_font = pygame.font.SysFont("microsoftyahei", 36, bold=True)
+            pause_text = pause_font.render("已暂停", True, TEXT_COLOR)
+            pause_rect = pause_text.get_rect(center=(WINDOW_W // 2, WINDOW_H // 2 - 20))
             self.screen.blit(pause_text, pause_rect)
             tip_text = self.font_small.render("按 空格 继续", True, (180, 180, 180))
-            tip_rect = tip_text.get_rect(
-                center=(WINDOW_W // 2, WINDOW_H // 2 + 20))
+            tip_rect = tip_text.get_rect(center=(WINDOW_W // 2, WINDOW_H // 2 + 20))
             self.screen.blit(tip_text, tip_rect)
+
+        elif not self.game_over_flag and self.snake == [(COLS // 2, ROWS // 2), (COLS // 2 - 1, ROWS // 2), (COLS // 2 - 2, ROWS // 2)]:
+            tip = self.font_small.render("按 方向键/WASD 开始", True, (120, 120, 120))
+            tip_rect = tip.get_rect(center=(WINDOW_W // 2, WINDOW_H // 2 + 60))
+            self.screen.blit(tip, tip_rect)
 
         pygame.display.flip()
 
