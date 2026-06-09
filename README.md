@@ -40,7 +40,14 @@ python main.py
 ```
 snake-pygame/
 ├── main.py          # 程序入口
-├── game.py          # 游戏核心逻辑与渲染
+├── game.py          # 游戏主控制器（SnakeGame）
+├── snake.py         # 蛇实体类（Snake）
+├── food.py          # 食物实体类（Food）
 ├── settings.py      # 配置常量
 └── README.md        # 本文件
 ```
+
+### 面向对象设计
+- **SnakeGame** — 游戏主控，管理循环、事件、渲染调度
+- **Snake** — 封装蛇身坐标、移动方向、碰撞检测
+- **Food** — 封装食物随机放置与光晕绘制
