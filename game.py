@@ -106,8 +106,10 @@ class SnakeGame:
         if self.game_over_flag or self.paused:
             return
 
-        # 移动蛇，传递是否吃到食物以决定生长
-        grow = self.snake.head == self.food.position
+        # 预测下一步是否会吃到食物，以决定是否生长
+        next_head = (self.snake.head[0] + self.snake.next_direction[0],
+                     self.snake.head[1] + self.snake.next_direction[1])
+        grow = next_head == self.food.position
         new_head = self.snake.move(grow=grow)
 
         # 边界碰撞检测
